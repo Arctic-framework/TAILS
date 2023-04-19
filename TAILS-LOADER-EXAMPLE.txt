@@ -1,0 +1,28 @@
+import numpy as np
+import pickle
+import TAILS as TL
+
+# Load the preprocessed data
+X_train = ...
+Y_train = ...
+X_test = ...
+Y_test = ...
+
+# Define the hyperparameters
+n_hidden = ...
+n_epochs = ...
+batch_size = ...
+learning_rate = ...
+
+# Train the model
+weights, biases = TL.train(X_train, Y_train, n_hidden, n_epochs, batch_size, learning_rate)
+
+# Save the model
+model = {"weights": weights, "biases": biases}
+with open("trained_model.pkl", "wb") as f:
+    pickle.dump(model, f)
+
+# Use the model to make predictions on the test data
+y_pred = forward_propagation(X_test, weights, biases)
+loss = mse_loss(Y_test, y_pred)
+print("Test loss: ", loss)
