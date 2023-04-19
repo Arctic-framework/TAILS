@@ -1,0 +1,113 @@
+import numpy as np
+import pickle
+
+# Define the activation function
+def relu(x):
+    return np.maximum(0,x)
+
+# Define the derivative of the activation function
+def relu_deriv(x):
+    x[x<=0] = 0
+    x[x>0] = 1
+    return x
+
+# Define the loss function
+def mse_loss(y_true, y_pred):
+    return np.mean(np.square(y_true - y_pred))
+
+# Define the forward propagation function
+def forward_propagation(x, weights, biases):
+    activations = [x]
+    for i in range(len(weights)):
+        if i == len(weights) - 1:
+            activation = np.dot(activations[-1], weights[i]) + biases[i] # output layer uses identity activation function
+        else:
+            activation = relu(np.dot(activations[-1], weights[i]) + biases[i])
+        activations.append(activation)
+    return activations[-1]
+
+# Define the backward propagation function
+def backward_propagation(y_true, y_pred, activations, weights, biases):
+    # Calculate the derivative of the loss with respect to the output of the network
+    dZ = 2 * (y_pred - y_true) / y_true.shape[0]
+    
+    # Backpropagate the error through the layers
+    dW = []
+    db = []
+    for i in reversed(range(len(weights))):
+        if i == len(weights) - 1:
+            dA = dZ # output layer uses identity activation function
+        else:
+            dA = np.dot(dZ, weights[i+1].T) * relu_deriv(activations[i+1])
+        dW_i = np.dot(activations[i].T, dZ)
+        db_i = np.sum(dZ, axis=0, keepdims=True)
+        dZ = dA
+        dW.insert(0, dW_i)
+        db.insert(0, db_i)
+        
+    loss = mse_loss(y_true, y_pred)
+    return dW, db, loss
+
+# Define the training function
+def train(X, Y, n_hidden, n_epochs, batch_size, learning_rate):
+    # Initialize the weights and biases randomly
+    n_input = X.shape[1]
+    n_output = Y.shape[1]
+    weights = []
+    biases = []
+    for i in range(n_hidden):
+        if i == 0:
+            w_i = np.random.normal(size=(n_input, n_hidden))
+        else:
+            w_i = np.random.normal(size=(n_hidden, n_hidden))
+        b_i = np.zeros((1, n_hidden))
+        weights.append(w_i)
+        biases.append(b_i)
+    w_out = np.random.normal(size=(n_hidden, n_output))
+    b_out = np.zeros((1, n_output))
+    weights.append(w_out)
+    biases.append(b_out)
+    
+    # Train the network
+    for epoch in range(n_epochs):
+        # Shuffle the training data
+        indices = np.arange(X.shape[0])
+        np.random.shuffle(indices)
+        X_shuffled = X[indices]
+        Y_shuffled = Y[indices]
+        
+        # Divide the data into batches
+        for batch_start in range(0, X.shape[0], batch_size):
+            batch_end = batch_start + batch_size
+            if batch_end > X.shape[0]:
+                batch_end = X.shape[0]
+            X_batch = X_shuffled[batch_start:batch_end]
+            Y_batch = Y_shuffled[batch_start:batch_end]
+            activations = [X_batch]
+            for i in range(len(weights)):
+                z = np.dot(activations[-1], weights[i]) + biases[i]
+                if i == len(weights) - 1:
+                    activation = z  # output layer uses identity activation function
+                else:
+                    activation = relu(z)
+                activations.append(activation)
+            y_pred = activations[-1]
+
+            # Backward propagation
+            dW, db, loss = backward_propagation(Y_batch, y_pred, activations, weights, biases)
+
+            # Update the weights and biases
+            for i in range(len(weights)):
+                weights[i] -= learning_rate * dW[i]
+                biases[i] -= learning_rate * db[i]
+
+        # Print the loss for this epoch
+        if (epoch+1) % 10 == 0:
+            y_pred = forward_propagation(X, weights, biases)
+            loss = mse_loss(Y, y_pred)
+            print("Epoch {0}: Loss = {1:.2f}".format(epoch+1, loss))
+            
+    return weights, biases
+    model = {"weights": weights, "biases": biases}
+    with open("trained_model.pkl", "wb") as f:
+    pickle.dump(model, f)
